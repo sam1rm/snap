@@ -4,5 +4,8 @@
  */
 
 exports.index = function(req, res){
-  res.render('index', { title: 'Express' });
+  	// res.render('index', { title: 'Express' });
+  	res.sendfile('public/snap.html');
 };
+
+
