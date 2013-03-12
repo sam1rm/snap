@@ -1033,7 +1033,7 @@
 /*global window, HTMLCanvasElement, getMinimumFontHeight, FileReader, Audio,
 FileList, getBlurredShadowSupport*/
 
-var morphicVersion = '2013-February-19';
+var morphicVersion = '2013-March-11';
 var modules = {}; // keep track of additional loaded modules
 var useBlurredShadows = getBlurredShadowSupport(); // check for Chrome-bug
 
@@ -2194,6 +2194,7 @@ Morph.prototype.init = function () {
     this.fps = 0;
     this.customContextMenu = null;
     this.lastTime = Date.now();
+    this.onNextStep = null; // optional function to be run once
 };
 
 // Morph string representation: e.g. 'a Morph 2 [20@45 | 130@250]'
@@ -2222,7 +2223,7 @@ Morph.prototype.stepFrame = function () {
     if (!this.step) {
         return null;
     }
-    var current, elapsed, leftover;
+    var current, elapsed, leftover, nxt;
     current = Date.now();
     elapsed = current - this.lastTime;
     if (this.fps > 0) {
@@ -2232,10 +2233,27 @@ Morph.prototype.stepFrame = function () {
     }
     if (leftover < 1) {
         this.lastTime = current;
+        if (this.onNextStep) {
+            nxt = this.onNextStep;
+            this.onNextStep = null;
+            nxt.call(this);
+        }
         this.step();
         this.children.forEach(function (child) {
             child.stepFrame();
         });
+    }
+};
+
+Morph.prototype.nextSteps = function (arrayOfFunctions) {
+    var lst = arrayOfFunctions || [],
+        nxt = lst.shift(),
+        myself = this;
+    if (nxt) {
+        this.onNextStep = function () {
+            nxt.call(myself);
+            myself.nextSteps(lst);
+        };
     }
 };
 
@@ -2681,7 +2699,9 @@ Morph.prototype.toggleVisibility = function () {
 Morph.prototype.fullImageClassic = function () {
     // why doesn't this work for all Morphs?
     var fb = this.fullBounds(),
-        img = newCanvas(fb.extent());
+        img = newCanvas(fb.extent()),
+        ctx = img.getContext('2d');
+    ctx.translate(-this.bounds.origin.x, -this.bounds.origin.y);
     this.fullDrawOn(img, fb);
     img.globalAlpha = this.alpha;
     return img;
@@ -3397,7 +3417,7 @@ Morph.prototype.developersMenu = function () {
     menu.addItem(
         "pic...",
         function () {
-            window.open(this.fullImage().toDataURL());
+            window.open(this.fullImageClassic().toDataURL());
         },
         'open a new window\nwith a picture of this morph'
     );
@@ -4597,9 +4617,9 @@ CursorMorph.prototype.goLeft = function (shift) {
     this.updateSelection(shift);
 };
 
-CursorMorph.prototype.goRight = function (shift) {
+CursorMorph.prototype.goRight = function (shift, howMany) {
     this.updateSelection(shift);
-    this.gotoSlot(this.slot + 1);
+    this.gotoSlot(this.slot + (howMany || 1));
     this.updateSelection(shift);
 };
 
@@ -4699,7 +4719,7 @@ CursorMorph.prototype.insert = function (aChar, shiftKey) {
         this.target.text = text;
         this.target.drawNew();
         this.target.changed();
-        this.goRight();
+        this.goRight(false, aChar.length);
     }
 };
 
@@ -4716,7 +4736,10 @@ CursorMorph.prototype.ctrl = function (aChar) {
         this.insert('[');
     } else if (aChar === 93) {
         this.insert(']');
+    } else if (aChar === 64) {
+        this.insert('@');
     }
+
 };
 
 CursorMorph.prototype.cmd = function (aChar) {
@@ -7279,11 +7302,12 @@ StringMorph.prototype.mouseDownLeft = function (pos) {
 };
 
 StringMorph.prototype.mouseClickLeft = function (pos) {
-    var cursor = this.root().cursor;
+    var cursor;
     if (this.isEditable) {
         if (!this.currentlySelecting) {
-            this.edit();
+            this.edit(); // creates a new cursor
         }
+        cursor = this.root().cursor;
         if (cursor) {
             cursor.gotoPos(pos);
         }
@@ -8993,9 +9017,11 @@ StringFieldMorph.prototype.string = function () {
     return this.text.text;
 };
 
-StringFieldMorph.prototype.mouseClickLeft = function () {
+StringFieldMorph.prototype.mouseClickLeft = function (pos) {
     if (this.isEditable) {
         this.text.edit();
+    } else {
+        this.escalateEvent('mouseClickLeft', pos);
     }
 };
 
@@ -10056,6 +10082,17 @@ WorldMorph.prototype.initEventListeners = function () {
         false
     );
 
+    document.body.addEventListener(
+        "paste",
+        function (event) {
+            var txt = event.clipboardData.getData("Text");
+            if (txt && myself.cursor) {
+                myself.cursor.insert(txt);
+            }
+        },
+        false
+    );
+
     window.addEventListener(
         "dragover",
         function (event) {
@@ -10083,14 +10120,14 @@ WorldMorph.prototype.initEventListeners = function () {
     );
 
     window.onbeforeunload = function (evt) {
-        var e = evt || window.event,
+        /* var e = evt || window.event,
             msg = "Are you sure you want to leave?";
         // For IE and Firefox
         if (e) {
             e.returnValue = msg;
         }
         // For Safari / chrome
-        return msg;
+        return msg; */
     };
 };
 

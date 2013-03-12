@@ -699,7 +699,7 @@ IDE_Morph.prototype.createPalette = function () {
     if (this.palette) {
         this.palette.destroy();
     }
-
+    this.currentCategory = "Relevant Blocks";
     this.palette = this.currentSprite.palette(this.currentCategory);
     this.palette.isDraggable = false;
     this.palette.acceptsDrops = true;
