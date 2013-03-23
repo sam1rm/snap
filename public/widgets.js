@@ -70,9 +70,10 @@
 
 /*global TriggerMorph, modules, Color, Point, BoxMorph, radians,
 newCanvas, StringMorph, Morph, TextMorph, nop, detect, StringFieldMorph,
-HTMLCanvasElement, fontHeight, SymbolMorph, localize, SpeechBubbleMorph*/
+HTMLCanvasElement, fontHeight, SymbolMorph, localize, SpeechBubbleMorph,
+ArrowMorph, MenuMorph, isString, isNil, SliderMorph*/
 
-modules.widgets = '2013-February-18';
+modules.widgets = '2013-March-22';
 
 var PushButtonMorph;
 var ToggleButtonMorph;
@@ -1528,13 +1529,89 @@ DialogBoxMorph.prototype.prompt = function (
     title,
     defaultString,
     world,
-    pic
+    pic,
+    choices, // optional dictionary for drop-down of choices
+    isReadOnly, // optional when using choices
+    isNumeric, // optional
+    sliderMin, // optional for numeric sliders
+    sliderMax, // optional for numeric sliders
+    sliderAction // optional single-arg function for numeric slider
 ) {
-    var txt = new InputFieldMorph(defaultString);
+    var sld,
+        head,
+        txt = new InputFieldMorph(
+            defaultString,
+            isNumeric || false, // numeric?
+            choices || null, // drop-down dict, optional
+            choices ? isReadOnly || false : false
+        );
     txt.setWidth(250);
+    if (isNumeric) {
+        if (pic) {
+            head = new AlignmentMorph('column', this.padding);
+            pic.setPosition(head.position());
+            head.add(pic);
+        }
+        if (!isNil(sliderMin) && !isNil(sliderMax)) {
+            sld = new SliderMorph(
+                sliderMin * 100,
+                sliderMax * 100,
+                parseFloat(defaultString) * 100,
+                (sliderMax - sliderMin) / 10 * 100,
+                'horizontal'
+            );
+            sld.alpha = 1;
+            sld.color = this.color.lighter(50);
+            sld.setHeight(txt.height() * 0.7);
+            sld.setWidth(txt.width());
+            sld.action = function (num) {
+                if (sliderAction) {
+                    sliderAction(num / 100);
+                }
+                txt.setContents(num / 100);
+                txt.edit();
+            };
+            if (!head) {
+                head = new AlignmentMorph('column', this.padding);
+            }
+            head.add(sld);
+        }
+        if (head) {
+            head.fixLayout();
+            this.setPicture(head);
+            head.fixLayout();
+        }
+    } else {
+        if (pic) {this.setPicture(pic); }
+    }
+
+    this.reactToChoice = function (inp) {
+        if (sld) {
+            sld.value = inp * 100;
+            sld.drawNew();
+            sld.changed();
+        }
+        if (sliderAction) {
+            sliderAction(inp);
+        }
+    };
+
+    txt.reactToKeystroke = function () {
+        var inp = txt.getValue();
+        if (sld) {
+            inp = Math.max(inp, sliderMin);
+            sld.value = inp * 100;
+            sld.drawNew();
+            sld.changed();
+        }
+        if (sliderAction) {
+            sliderAction(inp);
+        }
+    };
+
     this.labelString = title;
     this.createLabel();
-    if (pic) {this.setPicture(pic); }
+
     this.addBody(txt);
     txt.drawNew();
     this.addButton('ok', 'OK');
@@ -1554,20 +1631,32 @@ DialogBoxMorph.prototype.promptCredentials = function (
     purpose,
     tosURL,
     tosLabel,
+    prvURL,
+    prvLabel,
     checkBoxLabel,
     world,
-    pic
+    pic,
+    msg
 ) {
     var usr = new InputFieldMorph(),
+        bmn,
+        byr,
+        emlLabel,
         eml = new InputFieldMorph(),
         pw1 = new InputFieldMorph(),
         pw2 = new InputFieldMorph(),
         opw = new InputFieldMorph(),
         agree = false,
-        tosBtn,
         chk,
+        dof = new AlignmentMorph('row', 4),
+        mCol = new AlignmentMorph('column', 2),
+        yCol = new AlignmentMorph('column', 2),
         inp = new AlignmentMorph('column', 2),
+        lnk = new AlignmentMorph('row', 4),
         bdy = new AlignmentMorph('column', this.padding),
+        years = {},
+        currentYear = new Date().getFullYear(),
+        firstYear = currentYear - 20,
         myself = this;
 
     function labelText(string) {
@@ -1585,11 +1674,103 @@ DialogBoxMorph.prototype.promptCredentials = function (
         );
     }
 
+    function linkButton(label, url) {
+        var btn = new PushButtonMorph(
+            myself,
+            function () {
+                window.open(url);
+            },
+            '  ' + localize(label) + '  '
+        );
+        btn.fontSize = 10;
+        btn.corner = myself.buttonCorner;
+        btn.edge = myself.buttonEdge;
+        btn.outline = myself.buttonOutline;
+        btn.outlineColor = myself.buttonOutlineColor;
+        btn.outlineGradient = myself.buttonOutlineGradient;
+        btn.padding = myself.buttonPadding;
+        btn.contrast = myself.buttonContrast;
+        btn.drawNew();
+        btn.fixLayout();
+        return btn;
+    }
+
+    function age() {
+        var today = new Date().getFullYear() + new Date().getMonth() / 12,
+            year = +byr.getValue() || 0,
+            monthName = bmn.getValue(),
+            month,
+            birthday;
+        if (monthName instanceof Array) { // translatable
+            monthName = monthName[0];
+        }
+        if (isNaN(year)) {
+            year = 0;
+        }
+        month = [
+            'January',
+            'February',
+            'March',
+            'April',
+            'May',
+            'June',
+            'July',
+            'August',
+            'September',
+            'October',
+            'November',
+            'December'
+        ].indexOf(monthName);
+        if (isNaN(month)) {
+            month = 0;
+        }
+        birthday = year + month / 12;
+        return today - birthday;
+    }
+
+    bmn = new InputFieldMorph(
+        null, // text
+        false, // numeric?
+        {
+            'January' : ['January'],
+            'February' : ['February'],
+            'March' : ['March'],
+            'April' : ['April'],
+            'May' : ['May'],
+            'June' : ['June'],
+            'July' : ['July'],
+            'August' : ['August'],
+            'September' : ['September'],
+            'October' : ['October'],
+            'November' : ['November'],
+            'December' : ['December']
+        },
+        true // read-only
+    );
+    for (currentYear; currentYear > firstYear; currentYear -= 1) {
+        years[currentYear.toString() + ' '] = currentYear;
+    }
+    years[firstYear + ' or before'] = '< ' + currentYear;
+    byr = new InputFieldMorph(
+        null, // text
+        false, // numeric?
+        years,
+        true // read-only
+    );
+
     inp.alignment = 'left';
     inp.setColor(this.color);
     bdy.setColor(this.color);
 
+    mCol.alignment = 'left';
+    mCol.setColor(this.color);
+    yCol.alignment = 'left';
+    yCol.setColor(this.color);
+
     usr.setWidth(200);
+    bmn.setWidth(100);
+    byr.contents().minWidth = 80;
+    byr.setWidth(80);
     eml.setWidth(200);
     pw1.setWidth(200);
     pw2.setWidth(200);
@@ -1606,7 +1787,14 @@ DialogBoxMorph.prototype.promptCredentials = function (
     if (purpose === 'signup') {
         inp.add(labelText('User name:'));
         inp.add(usr);
-        inp.add(labelText('E-mail address:'));
+        mCol.add(labelText('Birth date:'));
+        mCol.add(bmn);
+        yCol.add(labelText('year:'));
+        yCol.add(byr);
+        dof.add(mCol);
+        dof.add(yCol);
+        inp.add(dof);
+        inp.add(emlLabel = labelText('foo'));
         inp.add(eml);
     }
 
@@ -1624,27 +1812,20 @@ DialogBoxMorph.prototype.promptCredentials = function (
         inp.add(pw2);
     }
 
+    if (msg) {
+        bdy.add(labelText(msg));
+    }
+
     bdy.add(inp);
 
+    if (tosURL || prvURL) {
+        bdy.add(lnk);
+    }
     if (tosURL) {
-        tosBtn = new PushButtonMorph(
-            this,
-            function () {
-                window.open(tosURL);
-            },
-            '  ' + localize(tosLabel) + '  '
-        );
-        tosBtn.fontSize = 10;
-        tosBtn.corner = this.buttonCorner;
-        tosBtn.edge = this.buttonEdge;
-        tosBtn.outline = this.buttonOutline;
-        tosBtn.outlineColor = this.buttonOutlineColor;
-        tosBtn.outlineGradient = this.buttonOutlineGradient;
-        tosBtn.padding = this.buttonPadding;
-        tosBtn.contrast = this.buttonContrast;
-        tosBtn.drawNew();
-        tosBtn.fixLayout();
-        bdy.add(tosBtn);
+        lnk.add(linkButton(tosLabel, tosURL));
+    }
+    if (prvURL) {
+        lnk.add(linkButton(prvLabel, prvURL));
     }
 
     if (checkBoxLabel) {
@@ -1665,7 +1846,11 @@ DialogBoxMorph.prototype.promptCredentials = function (
         bdy.add(chk);
     }
 
+    dof.fixLayout();
+    mCol.fixLayout();
+    yCol.fixLayout();
     inp.fixLayout();
+    lnk.fixLayout();
     bdy.fixLayout();
 
     this.labelString = title;
@@ -1675,6 +1860,11 @@ DialogBoxMorph.prototype.promptCredentials = function (
     this.addBody(bdy);
 
     usr.drawNew();
+    dof.drawNew();
+    mCol.drawNew();
+    bmn.drawNew();
+    yCol.drawNew();
+    byr.drawNew();
     pw1.drawNew();
     pw2.drawNew();
     opw.drawNew();
@@ -1708,7 +1898,7 @@ DialogBoxMorph.prototype.promptCredentials = function (
         if (purpose === 'login') {
             checklist = [usr, pw1];
         } else if (purpose === 'signup') {
-            checklist = [usr, eml];
+            checklist = [usr, bmn, byr, eml];
         } else if (purpose === 'changePassword') {
             checklist = [opw, pw1, pw2];
         }
@@ -1776,6 +1966,19 @@ DialogBoxMorph.prototype.promptCredentials = function (
             choice: agree
         };
     };
+
+    this.reactToChoice = function () {
+        if (purpose === 'signup') {
+            emlLabel.changed();
+            emlLabel.text = age() <= 13 ?
+                    'E-mail address of parent or guardian:'
+                        : 'E-mail address:';
+            emlLabel.drawNew();
+            emlLabel.changed();
+        }
+    };
+
+    this.reactToChoice(); // initialize e-mail label
 
     if (world) {
         world.add(this);
@@ -2451,13 +2654,25 @@ InputFieldMorph.prototype.contrast = 65;
 
 // InputFieldMorph instance creation:
 
-function InputFieldMorph(text, isNumeric) {
-    this.init(text, isNumeric);
+function InputFieldMorph(text, isNumeric, choiceDict, isReadOnly) {
+    this.init(text, isNumeric, choiceDict, isReadOnly);
 }
 
-InputFieldMorph.prototype.init = function (text, isNumeric) {
-    var contents = new StringFieldMorph(text || '');
+InputFieldMorph.prototype.init = function (
+    text,
+    isNumeric,
+    choiceDict,
+    isReadOnly
+) {
+    var contents = new StringFieldMorph(text || ''),
+        arrow = new ArrowMorph(
+            'down',
+            0,
+            Math.max(Math.floor(this.fontSize / 6), 1)
+        );
 
+    this.choices = choiceDict || null; // object, function or selector
+    this.isReadOnly = isReadOnly || false;
     this.isNumeric = isNumeric || false;
 
     contents.alpha = 0;
@@ -2470,6 +2685,7 @@ InputFieldMorph.prototype.init = function (text, isNumeric) {
     InputFieldMorph.uber.init.call(this);
     this.color = new Color(255, 255, 255);
     this.add(contents);
+    this.add(arrow);
     contents.isDraggable = false;
     this.drawNew();
 };
@@ -2485,6 +2701,20 @@ InputFieldMorph.prototype.contents = function () {
     );
 };
 
+InputFieldMorph.prototype.arrow = function () {
+    return detect(
+        this.children,
+        function (child) {
+            return (child instanceof ArrowMorph);
+        }
+    );
+};
+
+InputFieldMorph.prototype.setChoice = function (aStringOrFloat) {
+    this.setContents(aStringOrFloat);
+    this.escalateEvent('reactToChoice', aStringOrFloat);
+};
+
 InputFieldMorph.prototype.setContents = function (aStringOrFloat) {
     var cnts = this.contents();
     cnts.text.text = aStringOrFloat;
@@ -2497,6 +2727,7 @@ InputFieldMorph.prototype.setContents = function (aStringOrFloat) {
         cnts.text.text = aStringOrFloat.toString();
     }
     cnts.drawNew();
+    cnts.changed();
 };
 
 InputFieldMorph.prototype.edit = function () {
@@ -2523,13 +2754,59 @@ InputFieldMorph.prototype.setIsNumeric = function (bool) {
     this.setContents(value);
 };
 
-// InputSlotMorph layout:
+// InputFieldMorph drop-down menu:
+
+InputFieldMorph.prototype.dropDownMenu = function () {
+    var choices = this.choices,
+        key,
+        menu = new MenuMorph(
+            this.setChoice,
+            null,
+            this,
+            this.fontSize
+        );
+
+    if (choices instanceof Function) {
+        choices = choices.call(this);
+    } else if (isString(choices)) {
+        choices = this[choices]();
+    }
+    if (!choices) {
+        return null;
+    }
+    menu.addItem(' ', null);
+    for (key in choices) {
+        if (choices.hasOwnProperty(key)) {
+            if (key[0] === '~') {
+                menu.addLine();
+            } else {
+                menu.addItem(key, choices[key]);
+            }
+        }
+    }
+    if (menu.items.length > 0) {
+        menu.popUpAtHand(this.world());
+    } else {
+        return null;
+    }
+};
+
+// InputFieldMorph layout:
 
 InputFieldMorph.prototype.fixLayout = function () {
-    var contents = this.contents();
+    var contents = this.contents(),
+        arrow = this.arrow();
 
     if (!contents) {return null; }
     contents.isNumeric = this.isNumeric;
+    contents.isEditable = (!this.isReadOnly);
+    if (this.choices) {
+        arrow.setSize(this.fontSize);
+        arrow.show();
+    } else {
+        arrow.setSize(0);
+        arrow.hide();
+    }
     this.silentSetHeight(
         contents.height()
             + this.edge * 2
@@ -2543,13 +2820,32 @@ InputFieldMorph.prototype.fixLayout = function () {
     ));
 
     contents.setWidth(
-        this.width() - this.edge - this.typeInPadding
+        this.width() - this.edge - this.typeInPadding -
+            (this.choices ? arrow.width() + this.typeInPadding : 0)
     );
 
     contents.silentSetPosition(new Point(
         this.edge,
         this.edge
     ).add(this.typeInPadding).add(this.position()));
+
+    arrow.silentSetPosition(new Point(
+        this.right() - arrow.width() - this.edge,
+        contents.top()
+    ));
+
+};
+
+// InputFieldMorph events:
+
+InputFieldMorph.prototype.mouseClickLeft = function (pos) {
+    if (this.arrow().bounds.containsPoint(pos)) {
+        this.dropDownMenu();
+    } else if (this.isReadOnly) {
+        this.dropDownMenu();
+    } else {
+        this.escalateEvent('mouseClickLeft', pos);
+    }
 };
 
 // InputFieldMorph retrieving:

@@ -1481,3 +1481,81 @@ ______
 ------
 * Cloud work: Connect / Reconnect mechanism and password hashing "salt"
 * Exporting SVG_Costumes
+
+130222
+------
+* Objects: Fix for playNote distortion issue in Chrome
+
+130225
+------
+* Extended Signup dialog (COPPA-conforming, I hope)
+* Morphic: mouse click event bubbling for input fields
+* Widgets: Optional drop-downs for input fields
+
+130227
+------
+* Morphic: onNextStep and nextSteps() mechanism
+* GUI, Cloud: Ersatz-progress-bar-messages, using nextSteps()
+
+130228
+------
+* "Updating..." message while updating the cloud project list
+* Morphic: Clipboard "paste" text support (works currently only in Chrome)
+
+130311
+------
+* Czech translation update, thanks, Michael!
+* Morphic: "pic..." fix for scroll panes, thanks, Davide!
+* Morphic fix: Clicking on editable text once again moves the caret to the mouse cursor
+
+130312
+------
+* Threads: OR, AND are now special form primitives ("lazy")
+* Threads: fix for minor pen optimization glitch (catching the stage)
+* Lists, Objects: Resizing list watchers no longer makes them "tremble"
+
+130313
+------
+* Store: context receiver persistence fix (for reified scripts)
+* Threads: Execute reified blocks in the callee's context (not in the caller's)
+
+130314
+------
+* GUI: When logged into the Cloud, "cloud" becomes default in the project dialog
+* Store: local custom blocks can now store their definition receiver directly as value (avoiding turning them into "Obsolete!" blocks when re-opening the project), this is important for reified blocks assigned to variables elsewhere, and such for the part of OOP we can already do now.
+
+130318
+------
+* GUI, Blocks, BYOB, Widgets: Scaling Blocks and Scripts (shift-click on settings menu)
+* Widets: numerical prompts
+* GUI: #signup URL switch
+* Blocks: adjusting highlights when modifying active scripts
+
+130319
+------
+* Blocks: SyntaxElementMorph fixLayout() optimization for active highlights
+* Russian translation!! Yay, thanks, Svetlana Ptashnaya!!
+* Store, GUI, Blocks: Scaling support for Comments and serialization/deserialization
+* GUI: motd support: On startup Snap! looks for http://snap.berkeley.edu/motd.txt, if it exists it is shown in a dialog box
+* GUI: fix for #run: URL switch
+* GUI: cloudmsg support: cloud related notifications can be put into http://snap.berkeley.edu/cloudmsg.txt
+
+130320
+------
+* GUI: deactivated motd and cloudmsg mechanism for now (has some issues)
+* Updated Portuguese translation, thanks, Manuel!
+* Updated all translations for %keyHat and %msgHat specs
+* YPR: fixed turnLeft / turnRight swap bug
+
+130321
+------
+* Cloud: allow every XMLHttpRequest to transport cookies (withCredentials = true)
+
+130322
+------
+* Widgets: optional sliders and "lively" graphics for numerical prompters
+* Blocks, GUI: "Zoom blocks…" feature in the settings menu (no longer hidden)
+* Objects: numeric prompters for watcher's sliderMin/Max
+* translation updates
+* Objects: 'pic…' screenshot feature for the stage
+* GUI, Cloud: Fallback message support before showing an error

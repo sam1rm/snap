@@ -64,11 +64,11 @@ standardSettings, Sound, BlockMorph, ToggleMorph, InputSlotDialogMorph,
 ScriptsMorph, isNil, SymbolMorph, BlockExportDialogMorph,
 BlockImportDialogMorph, SnapTranslator, localize, List, InputSlotMorph,
 SnapCloud, Uint8Array, HandleMorph, SVG_Costume, fontHeight, hex_sha512,
-sb*/
+sb, CommentMorph, CommandBlockMorph*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.gui = '2013-February-21';
+modules.gui = '2013-March-22';
 
 // Declarations
 
@@ -111,6 +111,7 @@ IDE_Morph.prototype.init = function (isAutoFill) {
     MorphicPreferences.globalFontFamily = 'Helvetica, Arial';
 
     // additional properties:
+    this.cloudMsg = null;
     this.source = 'local';
     this.serializer = new SnapSerializer();
 
@@ -149,7 +150,7 @@ IDE_Morph.prototype.init = function (isAutoFill) {
 };
 
 IDE_Morph.prototype.openIn = function (world) {
-    var hash, usr;
+    var hash, usr, motd;
 
     this.buildPanes();
     world.add(this);
@@ -191,13 +192,27 @@ IDE_Morph.prototype.openIn = function (world) {
     this.reactToWorldResize(world.bounds);
 
     function getURL(url) {
-        var request = new XMLHttpRequest();
-        request.open('GET', url, false);
-        request.send();
-        if (request.status === 200) {
-            return request.responseText;
+        try {
+            var request = new XMLHttpRequest();
+            request.open('GET', url, false);
+            request.send();
+            if (request.status === 200) {
+                return request.responseText;
+            }
+            throw new Error('unable to retrieve ' + url);
+        } catch (err) {
+            return;
         }
-        throw new Error('unable to retrieve ' + url);
+    }
+
+    // dynamic notifications from non-source text files
+    // has some issues, commented out for now
+    /*
+    this.cloudMsg = getURL('http://snap.berkeley.edu/cloudmsg.txt');
+    motd = getURL('http://snap.berkeley.edu/motd.txt');
+    */
+    if (motd) {
+        this.inform('Snap!', motd);
     }
 
     if (location.hash.substr(0, 6) === '#open:') {
@@ -223,16 +238,18 @@ IDE_Morph.prototype.openIn = function (world) {
             hash = decodeURIComponent(hash);
         }
         if (hash.substr(0, 8) === '<project>') {
-            this.openProjectString(hash);
+            this.rawOpenProjectString(hash);
         } else {
-//            this.openProjectString(getURL(hash));
-            this.droppedText(getURL(hash));
+            this.rawOpenProjectString(getURL(hash));
+//            this.droppedText(getURL(hash));
         }
         this.toggleAppMode(true);
         this.runScripts();
     } else if (location.hash.substr(0, 6) === '#lang:') {
         this.setLanguage(location.hash.substr(6));
         this.newProject();
+    } else if (location.hash.substr(0, 7) === '#signup') {
+        this.createCloudAccount();
     }
 };
 
@@ -699,7 +716,7 @@ IDE_Morph.prototype.createPalette = function () {
     if (this.palette) {
         this.palette.destroy();
     }
-    this.currentCategory = "Relevant Blocks";
+
     this.palette = this.currentSprite.palette(this.currentCategory);
     this.palette.isDraggable = false;
     this.palette.acceptsDrops = true;
@@ -1587,6 +1604,15 @@ IDE_Morph.prototype.cloudMenu = function () {
         shiftClicked = (world.currentKey === 16);
 
     menu = new MenuMorph(this);
+    if (shiftClicked) {
+        menu.addItem(
+            'url...',
+            'setCloudURL',
+            null,
+            new Color(100, 0, 0)
+        );
+        menu.addLine();
+    }
     if (!SnapCloud.username) {
         menu.addItem(
             'Login...',
@@ -1678,6 +1704,10 @@ IDE_Morph.prototype.settingsMenu = function () {
 
     menu = new MenuMorph(this);
     menu.addItem('Language...', 'languageMenu');
+    menu.addItem(
+        'Zoom blocks...',
+        'userSetBlocksScale'
+    );
     menu.addLine();
     addPreference(
         'Blurred shadows',
@@ -1780,8 +1810,8 @@ IDE_Morph.prototype.settingsMenu = function () {
         'Thread safe scripts',
         function () {stage.isThreadSafe = !stage.isThreadSafe; },
         this.stage.isThreadSafe,
-        'uncheck to allow\nscript reentrancy',
-        'check to disallow\nscript reentrancy'
+        'uncheck to allow\nscript reentrance',
+        'check to disallow\nscript reentrance'
     );
     addPreference(
         'Prefer smooth animations',
@@ -1924,8 +1954,8 @@ IDE_Morph.prototype.aboutSnap = function () {
         module, btn1, btn2, btn3, btn4, licenseBtn, translatorsBtn,
         world = this.world();
 
-    aboutTxt = 'Snap! 4.0\nBuild Your Own Blocks\n\n--- alpha ---\n\n'
-        + 'Copyright \u24B8 2012 Jens M\u00F6nig and '
+    aboutTxt = 'Snap! 4.0\nBuild Your Own Blocks\n\n--- beta ---\n\n'
+        + 'Copyright \u24B8 2013 Jens M\u00F6nig and '
         + 'Brian Harvey\n'
         + 'jens@moenig.org, bh@cs.berkeley.edu\n\n'
 
@@ -2139,26 +2169,34 @@ IDE_Morph.prototype.newProject = function () {
 };
 
 IDE_Morph.prototype.saveProject = function (name) {
-    var menu, str;
+    var myself = this;
+    this.nextSteps([
+        function () {
+            myself.showMessage('Saving...');
+        },
+        function () {
+            myself.rawSaveProject(name);
+        }
+    ]);
+};
+
+IDE_Morph.prototype.rawSaveProject = function (name) {
+    var str;
     if (name) {
         this.setProjectName(name);
         if (Process.prototype.isCatchingErrors) {
             try {
-                menu = this.showMessage('Saving');
                 localStorage['-snap-project-' + name]
                     = str = this.serializer.serialize(this.stage);
                 location.hash = '#open:' + str;
-                menu.destroy();
                 this.showMessage('Saved!', 1);
             } catch (err) {
                 this.showMessage('Save failed: ' + err);
             }
         } else {
-            menu = this.showMessage('Saving');
             localStorage['-snap-project-' + name]
                 = str = this.serializer.serialize(this.stage);
             location.hash = '#open:' + str;
-            menu.destroy();
             this.showMessage('Saved!', 1);
         }
     }
@@ -2248,6 +2286,22 @@ IDE_Morph.prototype.exportSprite = function (sprite) {
 };
 
 IDE_Morph.prototype.openProjectString = function (str) {
+    var msg,
+        myself = this;
+    this.nextSteps([
+        function () {
+            msg = myself.showMessage('Opening project...');
+        },
+        function () {
+            myself.rawOpenProjectString(str);
+        },
+        function () {
+            msg.destroy();
+        }
+    ]);
+};
+
+IDE_Morph.prototype.rawOpenProjectString = function (str) {
     if (Process.prototype.isCatchingErrors) {
         try {
             this.serializer.openProject(this.serializer.load(str), this);
@@ -2261,6 +2315,22 @@ IDE_Morph.prototype.openProjectString = function (str) {
 };
 
 IDE_Morph.prototype.openCloudDataString = function (str) {
+    var msg,
+        myself = this;
+    this.nextSteps([
+        function () {
+            msg = myself.showMessage('Opening project...');
+        },
+        function () {
+            myself.rawOpenCloudDataString(str);
+        },
+        function () {
+            msg.destroy();
+        }
+    ]);
+};
+
+IDE_Morph.prototype.rawOpenCloudDataString = function (str) {
     var model;
     if (Process.prototype.isCatchingErrors) {
         try {
@@ -2285,6 +2355,22 @@ IDE_Morph.prototype.openCloudDataString = function (str) {
 };
 
 IDE_Morph.prototype.openBlocksString = function (str, name, silently) {
+    var msg,
+        myself = this;
+    this.nextSteps([
+        function () {
+            msg = myself.showMessage('Opening blocks...');
+        },
+        function () {
+            myself.rawOpenBlocksString(str, name, silently);
+        },
+        function () {
+            msg.destroy();
+        }
+    ]);
+};
+
+IDE_Morph.prototype.rawOpenBlocksString = function (str, name, silently) {
     // name is optional (string), so is silently (bool)
     var blocks,
         myself = this;
@@ -2314,6 +2400,22 @@ IDE_Morph.prototype.openBlocksString = function (str, name, silently) {
 };
 
 IDE_Morph.prototype.openSpritesString = function (str) {
+    var msg,
+        myself = this;
+    this.nextSteps([
+        function () {
+            msg = myself.showMessage('Opening sprite...');
+        },
+        function () {
+            myself.rawOpenSpritesString(str);
+        },
+        function () {
+            msg.destroy();
+        }
+    ]);
+};
+
+IDE_Morph.prototype.rawOpenSpritesString = function (str) {
     if (Process.prototype.isCatchingErrors) {
         try {
             this.serializer.loadSprites(str, this);
@@ -2341,6 +2443,7 @@ IDE_Morph.prototype.openMediaString = function (str) {
 IDE_Morph.prototype.openProject = function (name) {
     var str;
     if (name) {
+        this.showMessage('opening project\n' + name);
         this.setProjectName(name);
         this.openProjectString(
             str = localStorage['-snap-project-' + name]
@@ -2348,6 +2451,7 @@ IDE_Morph.prototype.openProject = function (name) {
         location.hash = '#open:' + str;
     }
 };
+
 
 IDE_Morph.prototype.switchToUserMode = function () {
     var world = this.world();
@@ -2673,6 +2777,110 @@ IDE_Morph.prototype.reflectLanguage = function (lang) {
     this.spriteBar.tabBar.tabTo('scripts');
     this.createCategories();
     this.createCorralBar();
+    this.fixLayout();
+    this.openProjectString(projectData);
+};
+
+// IDE_Morph blocks scaling
+
+IDE_Morph.prototype.userSetBlocksScale = function () {
+    var myself = this,
+        scrpt,
+        blck,
+        shield,
+        sample,
+        action;
+
+    scrpt = new CommandBlockMorph();
+    scrpt.color = SpriteMorph.prototype.blockColor.motion;
+    scrpt.setSpec(localize('build'));
+    blck = new CommandBlockMorph();
+    blck.color = SpriteMorph.prototype.blockColor.sound;
+    blck.setSpec(localize('your own'));
+    scrpt.nextBlock(blck);
+    blck = new CommandBlockMorph();
+    blck.color = SpriteMorph.prototype.blockColor.operators;
+    blck.setSpec(localize('blocks'));
+    scrpt.bottomBlock().nextBlock(blck);
+    /*
+    blck = SpriteMorph.prototype.blockForSelector('doForever');
+    blck.inputs()[0].nestedBlock(scrpt);
+    */
+
+    sample = new FrameMorph();
+    sample.texture = 'scriptsPaneTexture.gif';
+    sample.setExtent(new Point(250, 180));
+    scrpt.setPosition(sample.position().add(10));
+    sample.add(scrpt);
+
+    shield = new Morph();
+    shield.alpha = 0;
+    shield.setExtent(sample.extent());
+    shield.setPosition(sample.position());
+    sample.add(shield);
+
+    action = function (num) {
+    /*
+        var c;
+        blck.setScale(num);
+        blck.drawNew();
+        blck.setSpec(blck.blockSpec);
+        c = blck.inputs()[0];
+        c.setScale(num);
+        c.nestedBlock(scrpt);
+    */
+        scrpt.blockSequence().forEach(function (block) {
+            block.setScale(num);
+            block.drawNew();
+            block.setSpec(block.blockSpec);
+        });
+    };
+
+    new DialogBoxMorph(
+        null,
+        function (num) {
+            myself.setBlocksScale(num);
+        }
+    ).prompt(
+        'Zoom blocks',
+        SyntaxElementMorph.prototype.scale.toString(),
+        this.world(),
+        sample, // pic
+        {
+            'normal (1x)' : 1,
+            'demo (1.2x)' : 1.2,
+            'presentation (1.4x)' : 1.4,
+            'big (2x)' : 2,
+            'huge (4x)' : 4,
+            'giant (8x)' : 8,
+            'monstrous (10x)' : 10
+        },
+        false, // read only?
+        true, // numeric
+        1, // slider min
+        12, // slider max
+        action // slider action
+    );
+};
+
+IDE_Morph.prototype.setBlocksScale = function (num) {
+    var projectData;
+    if (Process.prototype.isCatchingErrors) {
+        try {
+            projectData = this.serializer.serialize(this.stage);
+        } catch (err) {
+            this.showMessage('Serialization failed: ' + err);
+        }
+    } else {
+        projectData = this.serializer.serialize(this.stage);
+    }
+    SyntaxElementMorph.prototype.setScale(num);
+    CommentMorph.prototype.refreshScale();
+    SpriteMorph.prototype.initBlocks();
+    this.spriteBar.tabBar.tabTo('scripts');
+    this.createCategories();
+    this.createCorralBar();
+    this.fixLayout();
     this.openProjectString(projectData);
 };
 
@@ -2699,6 +2907,7 @@ IDE_Morph.prototype.initializeCloud = function () {
                         );
                         localStorage['-snap-user'] = str;
                     }
+                    myself.source = 'cloud';
                     myself.showMessage('now connected.', 2);
                 },
                 myself.cloudError()
@@ -2709,15 +2918,23 @@ IDE_Morph.prototype.initializeCloud = function () {
         'login',
         null,
         null,
+        null,
+        null,
         'stay signed in on this computer\nuntil logging out',
         world,
-        myself.cloudIcon()
+        myself.cloudIcon(),
+        myself.cloudMsg
     );
 };
 
 IDE_Morph.prototype.createCloudAccount = function () {
     var myself = this,
         world = this.world();
+/*
+    // force-logout, commented out for now:
+    delete localStorage['-snap-user'];
+    SnapCloud.clear();
+*/
     new DialogBoxMorph(
         null,
         function (user) {
@@ -2742,9 +2959,12 @@ IDE_Morph.prototype.createCloudAccount = function () {
         'signup',
         'http://snap.berkeley.edu/tos.html',
         'Terms of Service...',
+        'http://snap.berkeley.edu/privacy.html',
+        'Privacy...',
         'I have read and agree\nto the Terms of Service',
         world,
-        myself.cloudIcon()
+        myself.cloudIcon(),
+        myself.cloudMsg
     );
 };
 
@@ -2770,8 +2990,11 @@ IDE_Morph.prototype.changeCloudPassword = function () {
         null,
         null,
         null,
+        null,
+        null,
         world,
-        myself.cloudIcon()
+        myself.cloudIcon(),
+        myself.cloudMsg
     );
 };
 
@@ -2793,6 +3016,7 @@ IDE_Morph.prototype.logout = function () {
 IDE_Morph.prototype.saveProjectToCloud = function (name) {
     var myself = this;
     if (name) {
+        this.showMessage('Saving project\nto the cloud...');
         this.setProjectName(name);
         SnapCloud.saveProject(
             this,
@@ -2956,8 +3180,31 @@ IDE_Morph.prototype.cloudResponse = function () {
 
 IDE_Morph.prototype.cloudError = function () {
     var myself = this;
+
+    function getURL(url) {
+        try {
+            var request = new XMLHttpRequest();
+            request.open('GET', url, false);
+            request.send();
+            if (request.status === 200) {
+                return request.responseText;
+            }
+            return null;
+        } catch (err) {
+            return null;
+        }
+    }
+
     return function (responseText, url) {
-        var response = responseText;
+        // first, try to find out an explanation for the error
+        // and notify the user about it,
+        // if none is found, show an error dialog box
+        var response = responseText,
+            explanation = getURL('http://snap.berkeley.edu/cloudmsg.txt');
+        if (explanation) {
+            myself.showMessage(explanation);
+            return;
+        }
         if (response.length > 50) {
             response = response.substring(0, 50) + '...';
         }
@@ -2982,6 +3229,29 @@ IDE_Morph.prototype.cloudIcon = function (height, color) {
         );
     icon.addShadow(new Point(1, 1), 1, clr.lighter(95));
     return icon;
+};
+
+IDE_Morph.prototype.setCloudURL = function () {
+    new DialogBoxMorph(
+        null,
+        function (url) {
+            SnapCloud.url = url;
+        }
+    ).prompt(
+        'Cloud URL',
+        SnapCloud.url,
+        this.world(),
+        null,
+        {
+            'Snap!Cloud' :
+                'https://snapcloud.miosoft.com/miocon/app/' +
+                    'login?_app=SnapCloud',
+            'local network dev' :
+                '192.168.2.108:8087/miocon/app/login?_app=SnapCloud',
+            'localhost dev' :
+                'localhost/miocon/app/login?_app=SnapCloud'
+        }
+    );
 };
 
 // IDE_Morph user dialog shortcuts
@@ -3015,11 +3285,13 @@ IDE_Morph.prototype.confirm = function (message, title, action) {
     );
 };
 
-IDE_Morph.prototype.prompt = function (message, callback) {
+IDE_Morph.prototype.prompt = function (message, callback, choices) {
     (new DialogBoxMorph(null, callback)).prompt(
         message,
         '',
-        this.world()
+        this.world(),
+        null,
+        choices
     );
 };
 
@@ -3038,6 +3310,8 @@ function ProjectDialogMorph(ide, label) {
 }
 
 ProjectDialogMorph.prototype.init = function (ide, task) {
+    var myself = this;
+
     // additional properties:
     this.ide = ide;
     this.task = task || 'open'; // String describing what do do (open, save)
@@ -3066,16 +3340,36 @@ ProjectDialogMorph.prototype.init = function (ide, task) {
 
     // build contents
     this.buildContents();
-    this.setSource(this.source);
+    this.onNextStep = function () { // yield to show "updating" message
+        myself.setSource(myself.source);
+    };
 };
 
 ProjectDialogMorph.prototype.buildContents = function () {
-    var thumbnail;
+    var thumbnail, notification;
 
     this.addBody(new Morph());
     this.body.color = this.color;
 
     this.srcBar = new AlignmentMorph('column', this.padding / 2);
+
+    if (this.ide.cloudMsg) {
+        notification = new TextMorph(
+            this.ide.cloudMsg,
+            10,
+            null, // style
+            false, // bold
+            null, // italic
+            null, // alignment
+            null, // width
+            null, // font name
+            new Point(1, 1), // shadow offset
+            new Color(255, 255, 255) // shadowColor
+        );
+        notification.refresh = nop;
+        this.srcBar.add(notification);
+    }
+
     this.addSourceButton('cloud', localize('Cloud'), 'cloud');
     this.addSourceButton('local', localize('Browser'), 'storage');
     if (this.task === 'open') {
@@ -3172,7 +3466,11 @@ ProjectDialogMorph.prototype.buildContents = function () {
     }
     this.addButton('cancel', 'Cancel');
 
-    this.setExtent(new Point(455, 335));
+    if (notification) {
+        this.setExtent(new Point(455, 335).add(notification.extent()));
+    } else {
+        this.setExtent(new Point(455, 335));
+    }
     this.fixLayout();
 
 };
@@ -3298,7 +3596,8 @@ ProjectDialogMorph.prototype.fixListFieldItemColors = function () {
 // ProjectDialogMorph ops
 
 ProjectDialogMorph.prototype.setSource = function (source) {
-    var myself = this;
+    var myself = this,
+        msg;
 
     this.source = source; //this.task === 'save' ? 'local' : source;
     this.srcBar.children.forEach(function (button) {
@@ -3306,12 +3605,17 @@ ProjectDialogMorph.prototype.setSource = function (source) {
     });
     switch (this.source) {
     case 'cloud':
+        msg = myself.ide.showMessage('Updating\nproject list...');
         this.projectList = [];
         SnapCloud.getProjectList(
             function (projectList) {
                 myself.installCloudProjectList(projectList);
+                msg.destroy();
             },
-            this.ide.cloudError()
+            function (err, lbl) {
+                msg.destroy();
+                myself.ide.cloudError().call(null, err, lbl);
+            }
         );
         break;
     case 'local':
@@ -3467,23 +3771,7 @@ ProjectDialogMorph.prototype.openProject = function () {
 
     if (this.source === 'cloud') {
         if (this.listField.selected) {
-
-            SnapCloud.reconnect(
-                function () {
-                    SnapCloud.callService(
-                        'getProject',
-                        function (response) {
-                            SnapCloud.disconnect();
-                            myself.ide.source = 'cloud';
-                            myself.ide.droppedText(response[0].SourceCode);
-                        },
-                        myself.ide.cloudError(),
-                        [myself.listField.selected.ProjectName]
-                    );
-                },
-                myself.ide.cloudError()
-            );
-            this.destroy();
+            this.openSelectedCloudProject();
         }
     } else { // 'local, examples'
         if (this.listField.selected) {
@@ -3492,6 +3780,38 @@ ProjectDialogMorph.prototype.openProject = function () {
             this.destroy();
         }
     }
+};
+
+ProjectDialogMorph.prototype.openSelectedCloudProject = function () {
+    var myself = this;
+    this.nextSteps([
+        function () {
+            myself.ide.showMessage('Fetching project\nfrom the cloud...');
+        },
+        function () {
+            myself.rawOpenSelectedCloudProject();
+        }
+    ]);
+};
+
+ProjectDialogMorph.prototype.rawOpenSelectedCloudProject = function () {
+    var myself = this;
+    SnapCloud.reconnect(
+        function () {
+            SnapCloud.callService(
+                'getProject',
+                function (response) {
+                    SnapCloud.disconnect();
+                    myself.ide.source = 'cloud';
+                    myself.ide.droppedText(response[0].SourceCode);
+                },
+                myself.ide.cloudError(),
+                [myself.listField.selected.ProjectName]
+            );
+        },
+        myself.ide.cloudError()
+    );
+    this.destroy();
 };
 
 ProjectDialogMorph.prototype.saveProject = function () {
@@ -3513,27 +3833,12 @@ ProjectDialogMorph.prototype.saveProject = function () {
                     ) + '\n"' + name + '"?',
                     'Replace Project',
                     function () {
-                        SnapCloud.saveProject(
-                            myself.ide,
-                            function () {
-                                myself.ide.source = 'cloud';
-                                myself.ide.showMessage('saved.', 2);
-                            },
-                            myself.ide.cloudError()
-                        );
-                        myself.destroy();
+                        myself.saveCloudProject();
                     }
+
                 );
             } else {
-                SnapCloud.saveProject(
-                    this.ide,
-                    function () {
-                        myself.ide.source = 'cloud';
-                        myself.ide.showMessage('saved.', 2);
-                    },
-                    this.ide.cloudError()
-                );
-                this.destroy();
+                myself.saveCloudProject();
             }
         } else { // 'local'
             if (detect(
@@ -3558,6 +3863,20 @@ ProjectDialogMorph.prototype.saveProject = function () {
             }
         }
     }
+};
+
+ProjectDialogMorph.prototype.saveCloudProject = function () {
+    var myself = this;
+    this.ide.showMessage('Saving project\nto the cloud...');
+    SnapCloud.saveProject(
+        this.ide,
+        function () {
+            myself.ide.source = 'cloud';
+            myself.ide.showMessage('saved.', 2);
+        },
+        this.ide.cloudError()
+    );
+    this.destroy();
 };
 
 ProjectDialogMorph.prototype.deleteProject = function () {
@@ -3876,7 +4195,18 @@ SpriteIconMorph.prototype.fixLayout = function () {
 // SpriteIconMorph menu
 
 SpriteIconMorph.prototype.userMenu = function () {
-    var menu = new MenuMorph(this);
+    var menu = new MenuMorph(this),
+        myself = this;
+    if (this.object instanceof StageMorph) {
+        menu.addItem(
+            'pic...',
+            function () {
+                window.open(myself.object.fullImageClassic().toDataURL());
+            },
+            'open a new window\nwith a picture of the stage'
+        );
+        return menu;
+    }
     if (!(this.object instanceof SpriteMorph)) {return null; }
     menu.addItem("show", 'showSpriteOnStage');
     menu.addLine();

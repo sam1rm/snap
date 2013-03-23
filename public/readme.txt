@@ -7,11 +7,17 @@ saving, loading, exporting, importing
 
 artefacts: projects, blocks, sprites
 
-URL options: #run: #open:
+URL options: #run: #open: #lang: #signup
 
-supported browsers
+dynamic content (currently deactivated):
+	http://snap.berkeley.edu/cloudmsg.txt
+	http://snap.berkeley.edu/motd.txt
+
+supported browsers, problems with the Android virtual keyboard
 
 supported browser / OS settings
+
+SVG support limitations
 
 OS/X: turn LCD font smoothing off
 

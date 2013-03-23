@@ -83,7 +83,7 @@ ArgLabelMorph, localize*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.threads = '2013-February-18';
+modules.threads = '2013-March-13';
 
 var ThreadManager;
 var Process;
@@ -353,7 +353,9 @@ Process.prototype.runStep = function () {
     this.lastYield = Date.now();
 
     // make sure to redraw atomic things
-    if (this.isAtomic && this.homeContext.receiver) {
+    if (this.isAtomic &&
+            this.homeContext.receiver &&
+            this.homeContext.receiver.endWarp) {
         this.homeContext.receiver.endWarp();
         this.homeContext.receiver.startWarp();
     }
@@ -427,6 +429,11 @@ Process.prototype.evaluateContext = function () {
 };
 
 Process.prototype.evaluateBlock = function (block, argCount) {
+    // check for special forms
+    if (contains(['reportOr', 'reportAnd'], block.selector)) {
+        return this[block.selector](block);
+    }
+
     // first evaluate all inputs, then apply the primitive
     var rcvr = this.context.receiver || this.topBlock.receiver(),
         inputs = this.context.inputs;
@@ -454,6 +461,42 @@ Process.prototype.evaluateBlock = function (block, argCount) {
         }
     }
 };
+
+// Process: Special Forms Blocks Primitives
+
+Process.prototype.reportOr = function (block) {
+    var inputs = this.context.inputs;
+
+    if (inputs.length < 1) {
+        this.evaluateNextInput(block);
+    } else if (inputs[0]) {
+        this.returnValueToParentContext(true);
+        this.popContext();
+    } else if (inputs.length < 2) {
+        this.evaluateNextInput(block);
+    } else {
+        this.returnValueToParentContext(inputs[1] === true);
+        this.popContext();
+    }
+};
+
+Process.prototype.reportAnd = function (block) {
+    var inputs = this.context.inputs;
+
+    if (inputs.length < 1) {
+        this.evaluateNextInput(block);
+    } else if (!inputs[0]) {
+        this.returnValueToParentContext(false);
+        this.popContext();
+    } else if (inputs.length < 2) {
+        this.evaluateNextInput(block);
+    } else {
+        this.returnValueToParentContext(inputs[1] === true);
+        this.popContext();
+    }
+};
+
+// Process: Non-Block evaluation
 
 Process.prototype.evaluateMultiSlot = function (multiSlot, argCount) {
     // first evaluate all subslots, then return a list of their values
@@ -945,7 +988,7 @@ Process.prototype.evaluateCustomBlock = function () {
 
     if (!context) {return null; }
     outer = new Context();
-    outer.receiver = this.homeContext.receiver;
+    outer.receiver = this.context.receiver; // || this.homeContext.receiver;
     outer.variables.parentFrame = outer.receiver.variables;
 
     runnable = new Context(
@@ -1751,14 +1794,6 @@ Process.prototype.reportLessThan = function (a, b) {
         y = b;
     }
     return x < y;
-};
-
-Process.prototype.reportAnd = function (a, b) {
-    return a && b;
-};
-
-Process.prototype.reportOr = function (a, b) {
-    return a || b;
 };
 
 Process.prototype.reportNot = function (bool) {

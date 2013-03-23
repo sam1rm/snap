@@ -185,7 +185,7 @@ SnapTranslator.dict.cs = {
     'translator_e-mail':
         'info@iguru.eu', // optional
     'last_changed':
-        '2012-10-28', // this, too, will appear in the Translators tab
+        '2013-03-011', // this, too, will appear in the Translators tab
 
     // GUI
     // control bar:
@@ -376,6 +376,16 @@ SnapTranslator.dict.cs = {
         'hraj zvuk %snd a počkej',
     'stop all sounds':
         'vypni všechny zvuky',
+    'rest for %n beats':
+            'pauza %n dob(y)',
+        'play note %n for %n beats':
+            'zahraj tón %n po %n dob(y)',
+        'change tempo by %n':
+            'změň tempo o %n',
+        'set tempo to %n bpm':
+            'nastav tempo na %n bpm.',
+        'tempo':
+            'tempo',
 
     // pen:
     'clear':
@@ -404,12 +414,12 @@ SnapTranslator.dict.cs = {
     // control:
     'when %greenflag clicked':
         'Po klepnutí na %greenflag',
-    'when %key key pressed':
-        'po stisku klávesy %key',
+    'when %keyHat key pressed':
+        'po stisku klávesy %keyHat',
     'when I am clicked':
         'po kliknutí na',
-    'when I receive %msg':
-        'po přijetí zprávy %msg',
+    'when I receive %msgHat':
+        'po přijetí zprávy %msgHat',
     'broadcast %msg':
         'poslat všem %msg',
     'broadcast %msg and wait':
@@ -429,7 +439,7 @@ SnapTranslator.dict.cs = {
     'if %b %c':
         'když %b %c',
     'if %b %c else %c':
-        'když %b %c pak %c',
+        'když %b %c jinak %c',
     'report %s':
         'vrátit %s',
     'stop block':
@@ -450,6 +460,12 @@ SnapTranslator.dict.cs = {
         'zavolat %cmdRing s podmínkou',
     'warp %c':
         'obal %c',
+    'when I start as a clone':
+        'začít po naklonování',
+    'create a clone of %cln':
+        'vytvořit klon %cln',
+    'delete this clone':
+        'odstranit klon',
 
     // sensing:
     'touching %col ?':
@@ -478,8 +494,14 @@ SnapTranslator.dict.cs = {
         'vynulovat stopky',
     'timer':
         'stopky',
+    '%att of %spr':
+        '%att z %spr',
     'http:// %s':
         'http:// %s',
+    'turbo mode?':
+        'turbo mód?',
+    'set turbo mode to %b':
+        'nastavit turbo mód na %b',
 
     'filtered for %clr':
         'filtrovaný pro %clr',
@@ -494,7 +516,7 @@ SnapTranslator.dict.cs = {
     'round %n':
         'zaokrouhli %n',
     '%fun of %n':
-        '%fun von %n',
+        '%fun z %n',
     'pick random %n to %n':
         'zvol náhodné číslo od %n do %n',
     '%b and %b':
@@ -523,6 +545,8 @@ SnapTranslator.dict.cs = {
         'Unicode %n jako znak',
     'is %s a %typ ?':
         'je %s typu %typ ?',
+    'is %s identical to %s ?':
+        'je %s stejný jako %s ?',
 
     'type of %s':
         'Typ %s',
@@ -590,6 +614,8 @@ SnapTranslator.dict.cs = {
         'přepnout do vývojářského módu',
     'enable Morphic\ncontext menus\nand inspectors,\nnot user-friendly!':
         'zobrazovat pokročilé menu',
+    'Reference manual':
+        'Referenční příručka',
 
     // project menu
     'Project Notes...':
@@ -617,6 +643,10 @@ SnapTranslator.dict.cs = {
         'Exportovat bloky...',
     'show global custom block definitions as XML\nin a new browser window':
         'Zobrazit definici vlastních bloků jako\nXML v novém okně prohlížeče',
+    'Import tools...':
+        'Importovat nástroje...',
+    'load the official library of\npowerful blocks':
+        'nahraje oficialní knihovnu\npokročilých bloků',
 
     // settings menu
     'Language...':
@@ -670,6 +700,18 @@ SnapTranslator.dict.cs = {
         'odškrtnutí povolí více vláken',
     'check to disallow\nscript reentrancy':
         'zaškrtnutí zakáže více vláken',
+    'Turbo mode':
+        'Turbo mód',
+    'uncheck to run scripts\nat normal speed':
+        'odškrtnutí spustí skript\nnormální rychlostí',
+    'check to prioritize\nscript execution':
+        'zaškrtnutí spustí skripty\nzvýšenou rychlostí',
+    'Prefer smooth animations':
+        'Zapnout plynulou animaci',
+    'uncheck for greater speed\nat variable frame rates':
+        'odškrtnout pro vyšší rychlost',
+    'check for smooth, predictable\nanimations across computers':
+        'zaškrtněte pro plynulé, předvídatelné\nanimace napříč počítači',
 
     // inputs
     'with inputs':
@@ -686,10 +728,14 @@ SnapTranslator.dict.cs = {
     // blocks:
     'help...':
         'nápověda...',
+    'relabel...':
+            'Zaměnit blok za...',
     'duplicate':
         'kopírovat',
     'make a copy\nand pick it up':
         'vytvořit kopii a držet ji',
+    'only duplicate this block':
+            'kopírovat pouze tento blok',
     'delete':
         'smazat',
     'script pic...':
@@ -712,6 +758,10 @@ SnapTranslator.dict.cs = {
         'upravit',
     'export...':
         'export...',
+
+      // stage:
+    'show all':
+        'Zobrazit vše',
 
     // scripting area
     'clean up':

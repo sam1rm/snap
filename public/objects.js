@@ -120,7 +120,7 @@ PrototypeHatBlockMorph*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.objects = '2013-February-21';
+modules.objects = '2013-March-22';
 
 var SpriteMorph;
 var StageMorph;
@@ -3896,7 +3896,8 @@ StageMorph.prototype.clear = function () {
 
 StageMorph.prototype.userMenu = function () {
     var ide = this.parentThatIsA(IDE_Morph),
-        menu = new MenuMorph(this);
+        menu = new MenuMorph(this),
+        myself = this;
 
     if (ide && ide.isAppMode) {
         menu.addItem('help', 'nop');
@@ -3904,6 +3905,13 @@ StageMorph.prototype.userMenu = function () {
     }
     menu.addItem("edit", 'edit');
     menu.addItem("show all", 'showAll');
+    menu.addItem(
+        "pic...",
+        function () {
+            window.open(myself.fullImageClassic().toDataURL());
+        },
+        'open a new window\nwith a picture of the stage'
+    );
     return menu;
 };
 
@@ -4706,6 +4714,7 @@ function Note(pitch) {
 // Note shared properties
 
 Note.prototype.audioContext = null;
+Note.prototype.gainNode = null;
 
 // Note audio context
 
@@ -4723,6 +4732,8 @@ Note.prototype.setupContext = function () {
         throw new Error('Web Audio API is not supported\nin this browser');
     }
     Note.prototype.audioContext = new AudioContext();
+    Note.prototype.gainNode = Note.prototype.audioContext.createGainNode();
+    Note.prototype.gainNode.gain.value = 0.25; // reduce volume by 1/4
 };
 
 // Note playing
@@ -4732,7 +4743,8 @@ Note.prototype.play = function () {
     this.oscillator.type = 0;
     this.oscillator.frequency.value =
         Math.pow(2, (this.pitch - 69) / 12) * 440;
-    this.oscillator.connect(this.audioContext.destination);
+    this.oscillator.connect(this.gainNode);
+    this.gainNode.connect(this.audioContext.destination);
     this.oscillator.noteOn(0); // deprecated, renamed to start()
 };
 
@@ -4930,7 +4942,9 @@ CellMorph.prototype.drawNew = function () {
     }
 
     // position my contents
-    this.contentsMorph.setCenter(this.center());
+    if (!isSameList) {
+        this.contentsMorph.setCenter(this.center());
+    }
 };
 
 CellMorph.prototype.drawShadow = function (context, radius, inset) {
@@ -5447,7 +5461,11 @@ WatcherMorph.prototype.userSetSliderMin = function () {
     ).prompt(
         "Slider minimum value",
         this.sliderMorph.start.toString(),
-        this.world()
+        this.world(),
+        null, // pic
+        null, // choices
+        null, // read only
+        true // numeric
     );
 };
 
@@ -5459,7 +5477,11 @@ WatcherMorph.prototype.userSetSliderMax = function () {
     ).prompt(
         "Slider maximum value",
         this.sliderMorph.stop.toString(),
-        this.world()
+        this.world(),
+        null, // pic
+        null, // choices
+        null, // read only
+        true // numeric
     );
 };
 

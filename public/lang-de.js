@@ -185,7 +185,7 @@ SnapTranslator.dict.de = {
     'translator_e-mail':
         'jens@moenig.org', // optional
     'last_changed':
-        '2013-02-18', // this, too, will appear in the Translators tab
+        '2013-03-22', // this, too, will appear in the Translators tab
 
     // GUI
     // control bar:
@@ -415,12 +415,12 @@ SnapTranslator.dict.de = {
     // control:
     'when %greenflag clicked':
         'Wenn %greenflag angeklickt',
-    'when %key key pressed':
-        'Wenn Taste %key gedr\u00fcckt',
+    'when %keyHat key pressed':
+        'Wenn Taste %keyHat gedr\u00fcckt',
     'when I am clicked':
         'Wenn ich angeklickt werde',
-    'when I receive %msg':
-        'Wenn ich %msg empfange',
+    'when I receive %msgHat':
+        'Wenn ich %msgHat empfange',
     'broadcast %msg':
         'sende %msg an alle',
     'broadcast %msg and wait':
@@ -461,10 +461,14 @@ SnapTranslator.dict.de = {
         'rufe %cmdRing mit Continuation auf',
     'warp %c':
         'Warp %c',
+    'when I start as a clone':
+        'Wenn ich geklont werde',
     'create a clone of %cln':
         'klone %cln',
     'myself':
         'mich',
+    'delete this clone':
+        'entferne diesen Klon',
 
     // sensing:
     'touching %col ?':
@@ -493,8 +497,14 @@ SnapTranslator.dict.de = {
         'starte Stoppuhr neu',
     'timer':
         'Stoppuhr',
+    '%att of %spr':
+        '%att von %spr',
     'http:// %s':
         'http:// %s',
+    'turbo mode?':
+        'Turbomodus?',
+    'set turbo mode to %b':
+        'setze Turbomodus auf %b',
 
     'filtered for %clr':
         'nach %clr gefiltert',
@@ -595,6 +605,8 @@ SnapTranslator.dict.de = {
     // snap menu
     'About...':
         '\u00dcber Snap!...',
+    'Reference manual':
+        'Handbuch lesen',
     'Snap! website':
         'Snap! Webseite',
     'Download source':
@@ -640,9 +652,17 @@ SnapTranslator.dict.de = {
     'load the official library of\npowerful blocks':
         'das offizielle Modul mit\nm\u00e4chtigen Bl\u00f6cken laden',
 
+    // cloud menu
+    'Login...':
+        'Anmelden...',
+    'Signup...':
+        'Benutzerkonto einrichten...',
+
     // settings menu
     'Language...':
         'Sprache...',
+    'Zoom blocks...':
+        'Bl\u00f6cke vergr\u00f6\u00dfern...',
     'Blurred shadows':
         'Weiche Schatten',
     'uncheck to use solid drop\nshadows and highlights':
@@ -699,14 +719,26 @@ SnapTranslator.dict.de = {
         'Animationen',
     'uncheck to disable\nIDE animations':
         'ausschalten um IDE-\nAnimationen zu verhindern',
+    'Turbo mode':
+        'Turbomodus',
+    'check to prioritize\nscript execution':
+        'einschalten, um Skripte\nzu priorisieren',
+    'uncheck to run scripts\nat normal speed':
+        'ausschalten, um Skripte\nnormal auszuf\u00fchren',
     'check to enable\nIDE animations':
         'einschalten um IDE-\nAnimationen zu erlauben',
     'Thread safe scripts':
         'Threadsicherheit',
-    'uncheck to allow\nscript reentrancy':
+    'uncheck to allow\nscript reentrance':
         'verhindert, dass unvollendete\nSkripte erneut gestartet werden',
-    'check to disallow\nscript reentrancy':
+    'check to disallow\nscript reentrance':
         'verhindert, dass unvollendete\nSkripte erneut gestartet werden',
+    'Prefer smooth animations':
+        'Fixe Framerate',
+    'uncheck for greater speed\nat variable frame rates':
+        'ausschalten, um Animationen \ndynamischer auszuf\u00fchren',
+    'check for smooth, predictable\nanimations across computers':
+        'einschalten, damit Animationen\n\u00fcberall gleich laufen',
 
     // inputs
     'with inputs':
@@ -759,6 +791,10 @@ SnapTranslator.dict.de = {
     // stage:
     'show all':
         'Alles zeigen',
+    'pic...':
+        'Bild exportieren...',
+    'open a new window\nwith a picture of the stage':
+        'ein neues Browserfenster mit einem\nBild der B\u00fchne \u00f6ffnen',
 
     // scripting area
     'clean up':
@@ -806,6 +842,30 @@ SnapTranslator.dict.de = {
     // help
     'Help':
         'Hilfe',
+
+    // zoom blocks
+    'Zoom blocks':
+        'Bl\u00f6cke vergr\u00f6\u00dfern',
+    'build':
+        'baue',
+    'your own':
+        'eigene',
+    'blocks':
+        'Bl\u00f6cke',
+    'normal (1x)':
+        'normal (1x)',
+    'demo (1.2x)':
+        'Demo (1.2x)',
+    'presentation (1.4x)':
+        'Pr\u00e4sentation (1.4x)',
+    'big (2x)':
+        'gro\u00df (2x)',
+    'huge (4x)':
+        'riesig (4x)',
+    'giant (8x)':
+        'gigantisch (8x)',
+    'monstrous (10x)':
+        'ungeheuerlich (10x)',
 
     // Project Manager
     'Untitled':

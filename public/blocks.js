@@ -153,7 +153,7 @@ DialogBoxMorph, BlockInputFragmentMorph, PrototypeHatBlockMorph*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2013-February-18';
+modules.blocks = '2013-March-22';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -296,37 +296,46 @@ SyntaxElementMorph.uber = Morph.prototype;
         rfColor            - <Color> for reified outlines and slot backgrounds
 */
 
-SyntaxElementMorph.prototype.corner = 3;
-SyntaxElementMorph.prototype.rounding = 9;
-SyntaxElementMorph.prototype.edge = 1.000001; // shadow bug in Chrome
-SyntaxElementMorph.prototype.inset = 6;
-SyntaxElementMorph.prototype.hatHeight = 12;
-SyntaxElementMorph.prototype.hatWidth = 70;
-SyntaxElementMorph.prototype.rfBorder = 3;
-SyntaxElementMorph.prototype.minWidth = 0;
-SyntaxElementMorph.prototype.dent = 8;
-SyntaxElementMorph.prototype.bottomPadding = 3;
-SyntaxElementMorph.prototype.cSlotPadding = 4;
-SyntaxElementMorph.prototype.typeInPadding = 1;
-SyntaxElementMorph.prototype.labelPadding = 4;
-SyntaxElementMorph.prototype.labelFontName = 'Verdana';
-SyntaxElementMorph.prototype.labelFontStyle = 'sans-serif';
-SyntaxElementMorph.prototype.fontSize = 10;
-SyntaxElementMorph.prototype.embossing = new Point(-1, -1);
-SyntaxElementMorph.prototype.labelWidth = 450;
-SyntaxElementMorph.prototype.labelWordWrap = true;
-SyntaxElementMorph.prototype.dynamicInputLabels = true;
-SyntaxElementMorph.prototype.feedbackColor = new Color(255, 255, 255);
-SyntaxElementMorph.prototype.feedbackMinHeight = 5;
-SyntaxElementMorph.prototype.minSnapDistance = 20;
-SyntaxElementMorph.prototype.reporterDropFeedbackPadding = 10;
-SyntaxElementMorph.prototype.contrast = 65;
-SyntaxElementMorph.prototype.labelContrast = 25;
-SyntaxElementMorph.prototype.activeHighlight = new Color(153, 255, 213);
-SyntaxElementMorph.prototype.errorHighlight = new Color(173, 15, 0);
-SyntaxElementMorph.prototype.activeBlur = 20;
-SyntaxElementMorph.prototype.activeBorder = 4;
-SyntaxElementMorph.prototype.rfColor = new Color(120, 120, 120);
+SyntaxElementMorph.prototype.setScale = function (num) {
+    var scale = Math.min(Math.max(num, 1), 25);
+    this.scale = scale;
+    this.corner = 3 * scale;
+    this.rounding = 9 * scale;
+    this.edge = 1.000001 * scale;
+    this.inset = 6 * scale;
+    this.hatHeight = 12 * scale;
+    this.hatWidth = 70 * scale;
+    this.rfBorder = 3 * scale;
+    this.minWidth = 0;
+    this.dent = 8 * scale;
+    this.bottomPadding = 3 * scale;
+    this.cSlotPadding = 4 * scale;
+    this.typeInPadding = scale;
+    this.labelPadding = 4 * scale;
+    this.labelFontName = 'Verdana';
+    this.labelFontStyle = 'sans-serif';
+    this.fontSize = 10 * scale;
+    this.embossing = new Point(
+        -1 * Math.max(scale / 2, 1),
+        -1 * Math.max(scale / 2, 1)
+    );
+    this.labelWidth = 450 * scale;
+    this.labelWordWrap = true;
+    this.dynamicInputLabels = true;
+    this.feedbackColor = new Color(255, 255, 255);
+    this.feedbackMinHeight = 5;
+    this.minSnapDistance = 20;
+    this.reporterDropFeedbackPadding = 10 * scale;
+    this.contrast = 65;
+    this.labelContrast = 25;
+    this.activeHighlight = new Color(153, 255, 213);
+    this.errorHighlight = new Color(173, 15, 0);
+    this.activeBlur = 20;
+    this.activeBorder = 4;
+    this.rfColor = new Color(120, 120, 120);
+};
+
+SyntaxElementMorph.prototype.setScale(1);
 
 // SyntaxElementMorph instance creation:
 
@@ -548,6 +557,10 @@ SyntaxElementMorph.prototype.reactToGrabOf = function (grabbedMorph) {
         topBlock.allComments().forEach(function (comment) {
             comment.align(topBlock);
         });
+        if (topBlock.getHighlight()) {
+            topBlock.removeHighlight();
+            topBlock.addHighlight();
+        }
     }
 };
 
@@ -742,6 +755,27 @@ SyntaxElementMorph.prototype.labelPart = function (spec) {
                 }
             );
             part.setContents(1);
+            break;
+        case '%month':
+            part = new InputSlotMorph(
+                null, // text
+                false, // numeric?
+                {
+                    'January' : ['January'],
+                    'February' : ['February'],
+                    'March' : ['March'],
+                    'April' : ['April'],
+                    'May' : ['May'],
+                    'June' : ['June'],
+                    'July' : ['July'],
+                    'August' : ['August'],
+                    'September' : ['September'],
+                    'October' : ['October'],
+                    'November' : ['November'],
+                    'December' : ['December']
+                },
+                true // read-only
+            );
             break;
         case '%ida':
             part = new InputSlotMorph(
@@ -1117,7 +1151,6 @@ SyntaxElementMorph.prototype.fixLayout = function () {
         space = this.isPrototype ?
                 1 : Math.floor(fontHeight(this.fontSize) / 3),
         bottomCorrection,
-        needsHighlight = false,
         initialExtent = this.extent();
 
     if ((this instanceof MultiArgMorph) && (this.slotSpec !== '%c')) {
@@ -1148,11 +1181,9 @@ SyntaxElementMorph.prototype.fixLayout = function () {
                 lines.push([part]);
             }
         } else if (part instanceof BlockHighlightMorph) {
-            if (!(myself.parent.topBlock)) { // I am on top
-                needsHighlight = true;
-            }
-            myself.fullChanged();
-            myself.removeChild(part);
+            nop(); // should be redundant now
+            // myself.fullChanged();
+            // myself.removeChild(part);
         } else {
             if (part.isVisible) {
                 x += part.fullBounds().width() + space;
@@ -1328,17 +1359,25 @@ SyntaxElementMorph.prototype.fixLayout = function () {
                 affected.fixLayout();
             }
         }
+        if (affected) {
+            return;
+        }
     } else if (this instanceof ReporterBlockMorph) {
         if (this.parent) {
             if (this.parent.fixLayout) {
-                this.parent.fixLayout();
+                return this.parent.fixLayout();
             }
         }
     }
 
-    // restore highlight:
-    if (needsHighlight) {
-        this.addHighlight();
+    this.fixHighlight();
+};
+
+SyntaxElementMorph.prototype.fixHighlight = function () {
+    var top = this.topBlock();
+    if (top.getHighlight && top.getHighlight()) {
+        top.removeHighlight();
+        top.addHighlight();
     }
 };
 
@@ -2012,6 +2051,7 @@ BlockMorph.prototype.showHelp = function () {
 
 BlockMorph.prototype.eraseHoles = function (context) {
     var myself = this,
+        isReporter = this instanceof ReporterBlockMorph,
         shift = this.edge * 0.5,
         gradient,
         rightX,
@@ -2050,9 +2090,9 @@ BlockMorph.prototype.eraseHoles = function (context) {
         var w = hole.width(),
             h = Math.floor(hole.height()) - 2; // Opera needs this
         context.clearRect(
-            Math.floor(hole.bounds.origin.x - myself.bounds.origin.x),
+            Math.floor(hole.bounds.origin.x - myself.bounds.origin.x) + 1,
             Math.floor(hole.bounds.origin.y - myself.bounds.origin.y) + 1,
-            w,
+            isReporter ? w - 1 : w + 1,
             h
         );
     });
@@ -2450,6 +2490,14 @@ BlockMorph.prototype.snap = function () {
     top.allComments().forEach(function (comment) {
         comment.align(top);
     });
+    // fix highlights, if any
+    if (this.getHighlight() && (this !== top)) {
+        this.removeHighlight();
+    }
+    if (top.getHighlight()) {
+        top.removeHighlight();
+        top.addHighlight();
+    }
 };
 
 // CommandBlockMorph ///////////////////////////////////////////////////
@@ -2739,9 +2787,9 @@ CommandBlockMorph.prototype.drawNew = function () {
 CommandBlockMorph.prototype.drawBody = function (context) {
     context.fillRect(
         0,
-        this.corner,
+        Math.floor(this.corner),
         this.width(),
-        this.height() - (this.corner * 3)
+        this.height() - Math.floor(this.corner * 3) + 1
     );
 };
 
@@ -3152,9 +3200,9 @@ HatBlockMorph.prototype.drawTop = function (context) {
 HatBlockMorph.prototype.drawBody = function (context) {
     context.fillRect(
         0,
-        this.hatHeight + this.corner,
+        this.hatHeight + Math.floor(this.corner) - 1,
         this.width(),
-        this.height() - (this.corner * 3) - (this.hatHeight)
+        this.height() - Math.floor(this.corner * 3) - this.hatHeight + 2
     );
 };
 
@@ -5888,6 +5936,8 @@ InputSlotMorph.prototype.fixLayout = function () {
 InputSlotMorph.prototype.mouseClickLeft = function (pos) {
     if (this.arrow().bounds.containsPoint(pos)) {
         this.dropDownMenu();
+    } else if (this.isReadOnly) {
+        this.dropDownMenu();
     } else {
         this.contents().edit();
         this.contents().selectAll();
@@ -6938,13 +6988,14 @@ SymbolMorph.prototype.drawSymbolFlag = function (canvas, color) {
     // answer a canvas showing a flag
     var ctx = canvas.getContext('2d'),
         w = canvas.width,
+        l = Math.max(w / 12, 1),
         h = canvas.height;
 
-    ctx.lineWidth = 1; // w / 5;
+    ctx.lineWidth = l;
     ctx.strokeStyle = color.toString();
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(0, canvas.height);
+    ctx.moveTo(l / 2, 0);
+    ctx.lineTo(l / 2, canvas.height);
     ctx.stroke();
 
     ctx.lineWidth = h / 2;
@@ -7066,11 +7117,13 @@ SymbolMorph.prototype.drawSymbolTurnRight = function (canvas, color) {
     // answer a canvas showing a right-turning arrow
     var ctx = canvas.getContext('2d'),
         w = canvas.width,
+        l = Math.max(w / 10, 1),
         r = w / 2;
 
+    ctx.lineWidth = l;
     ctx.strokeStyle = color.toString();
     ctx.beginPath();
-    ctx.arc(r, r * 2, r - 1, radians(0), radians(-90), false);
+    ctx.arc(r, r * 2, r - l / 2, radians(0), radians(-90), false);
     ctx.stroke();
 
     ctx.fillStyle = color.toString();
@@ -7088,11 +7141,13 @@ SymbolMorph.prototype.drawSymbolTurnLeft = function (canvas, color) {
     // answer a canvas showing a left-turning arrow
     var ctx = canvas.getContext('2d'),
         w = canvas.width,
+        l = Math.max(w / 10, 1),
         r = w / 2;
 
+    ctx.lineWidth = l;
     ctx.strokeStyle = color.toString();
     ctx.beginPath();
-    ctx.arc(r, r * 2, r - 1, radians(180), radians(-90), true);
+    ctx.arc(r, r * 2, r - l / 2, radians(180), radians(-90), true);
     ctx.stroke();
 
     ctx.fillStyle = color.toString();
@@ -8683,9 +8738,13 @@ CommentMorph.uber = BoxMorph.prototype;
 
 // CommentMorph preferences settings (pseudo-inherited from SyntaxElement):
 
-CommentMorph.prototype.fontSize = SyntaxElementMorph.prototype.fontSize;
-CommentMorph.prototype.padding = 5;
-CommentMorph.prototype.rounding = 8;
+CommentMorph.prototype.refreshScale = function () {
+    CommentMorph.prototype.fontSize = SyntaxElementMorph.prototype.fontSize;
+    CommentMorph.prototype.padding = 5 * SyntaxElementMorph.prototype.scale;
+    CommentMorph.prototype.rounding = 8 * SyntaxElementMorph.prototype.scale;
+};
+
+CommentMorph.prototype.refreshScale();
 
 // CommentMorph instance creation:
 
@@ -8694,13 +8753,14 @@ function CommentMorph(contents) {
 }
 
 CommentMorph.prototype.init = function (contents) {
-    var myself = this;
+    var myself = this,
+        scale = SyntaxElementMorph.prototype.scale;
     this.block = null; // optional anchor block
     this.stickyOffset = null; // not to be persisted
     this.isCollapsed = false;
     this.titleBar = new BoxMorph(
         this.rounding,
-        1.000001, // shadow bug in Chrome,
+        1.000001 * scale, // shadow bug in Chrome,
         new Color(255, 255, 180)
     );
     this.titleBar.color = new Color(255, 255, 180);
@@ -8718,7 +8778,7 @@ CommentMorph.prototype.init = function (contents) {
     );
     this.contents.isEditable = true;
     this.contents.enableSelecting();
-    this.contents.maxWidth = 90;
+    this.contents.maxWidth = 90 * scale;
     this.contents.drawNew();
     this.handle = new HandleMorph(
         this.contents,
@@ -8727,13 +8787,13 @@ CommentMorph.prototype.init = function (contents) {
         -2,
         -2
     );
-    this.handle.setExtent(new Point(11, 11));
+    this.handle.setExtent(new Point(11 * scale, 11 * scale));
     this.anchor = null;
 
     CommentMorph.uber.init.call(
         this,
         this.rounding,
-        1.000001, // shadow bug in Chrome,
+        1.000001 * scale, // shadow bug in Chrome,
         new Color(255, 255, 180)
     );
     this.color = new Color(255, 255, 220);

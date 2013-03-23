@@ -56,11 +56,12 @@ detect, CustomCommandBlockMorph, CustomReporterBlockMorph, Color, List,
 newCanvas, Costume, Sound, Audio, IDE_Morph, ScriptsMorph, BlockMorph,
 ArgMorph, InputSlotMorph, TemplateSlotMorph, CommandSlotMorph,
 FunctionSlotMorph, MultiArgMorph, ColorSlotMorph, nop, CommentMorph, isNil,
-localize, sizeOf, ArgLabelMorph, SVG_Costume, MorphicPreferences*/
+localize, sizeOf, ArgLabelMorph, SVG_Costume, MorphicPreferences,
+SyntaxElementMorph*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.store = '2013-February-21';
+modules.store = '2013-March-19';
 
 
 // XML_Serializer ///////////////////////////////////////////////////////
@@ -702,7 +703,8 @@ SnapSerializer.prototype.populateCustomBlocks = function (
 
 SnapSerializer.prototype.loadScripts = function (scripts, model) {
     // private
-    var myself = this;
+    var myself = this,
+        scale = SyntaxElementMorph.prototype.scale;
     scripts.texture = 'scriptsPaneTexture.gif';
     model.children.forEach(function (child) {
         var element;
@@ -712,8 +714,8 @@ SnapSerializer.prototype.loadScripts = function (scripts, model) {
                 return;
             }
             element.setPosition(new Point(
-                +child.attributes.x || 0,
-                +child.attributes.y || 0
+                (+child.attributes.x || 0) * scale,
+                (+child.attributes.y || 0) * scale
             ).add(scripts.topLeft()));
             scripts.add(element);
             element.fixBlockColor(null, true); // force zebra coloring
@@ -726,8 +728,8 @@ SnapSerializer.prototype.loadScripts = function (scripts, model) {
                 return;
             }
             element.setPosition(new Point(
-                +child.attributes.x || 0,
-                +child.attributes.y || 0
+                (+child.attributes.x || 0) * scale,
+                (+child.attributes.y || 0) * scale
             ).add(scripts.topLeft()));
             scripts.add(element);
         }
@@ -737,6 +739,7 @@ SnapSerializer.prototype.loadScripts = function (scripts, model) {
 SnapSerializer.prototype.loadScriptsArray = function (model) {
     // private - answer an array containting the model's scripts
     var myself = this,
+        scale = SyntaxElementMorph.prototype.scale,
         scripts = [];
     model.children.forEach(function (child) {
         var element;
@@ -746,8 +749,8 @@ SnapSerializer.prototype.loadScriptsArray = function (model) {
                 return;
             }
             element.setPosition(new Point(
-                +child.attributes.x || 0,
-                +child.attributes.y || 0
+                (+child.attributes.x || 0) * scale,
+                (+child.attributes.y || 0) * scale
             ));
             scripts.push(element);
             element.fixBlockColor(null, true); // force zebra coloring
@@ -757,8 +760,8 @@ SnapSerializer.prototype.loadScriptsArray = function (model) {
                 return;
             }
             element.setPosition(new Point(
-                +child.attributes.x || 0,
-                +child.attributes.y || 0
+                (+child.attributes.x || 0) * scale,
+                (+child.attributes.y || 0) * scale
             ));
             scripts.push(element);
         }
@@ -787,15 +790,16 @@ SnapSerializer.prototype.loadScript = function (model) {
 
 SnapSerializer.prototype.loadComment = function (model) {
     // private
-    var comment = new CommentMorph(model.contents);
+    var comment = new CommentMorph(model.contents),
+        scale = SyntaxElementMorph.prototype.scale;
     comment.isCollapsed = (model.attributes.collapsed === 'true');
-    comment.setTextWidth(+model.attributes.w);
+    comment.setTextWidth(+model.attributes.w * scale);
     return comment;
 };
 
 SnapSerializer.prototype.loadBlock = function (model, isReporter) {
     // private
-    var block, info, inputs, isGlobal, receiver;
+    var block, info, inputs, isGlobal, rm, receiver;
     if (model.tag === 'block') {
         if (model.attributes.hasOwnProperty('var')) {
             return SpriteMorph.prototype.variableBlock(
@@ -807,6 +811,12 @@ SnapSerializer.prototype.loadBlock = function (model, isReporter) {
         isGlobal = model.attributes.scope ? false : true;
         receiver = isGlobal ? this.project.stage
             : this.project.sprites[model.attributes.scope];
+        rm = model.childNamed('receiver');
+        if (rm && rm.children[0]) {
+            receiver = this.loadValue(
+                model.childNamed('receiver').children[0]
+            );
+        }
         if (!receiver) {
             return this.obsoleteBlock(isReporter);
         }
@@ -848,6 +858,8 @@ SnapSerializer.prototype.loadBlock = function (model, isReporter) {
         if (child.tag === 'comment') {
             block.comment = this.loadComment(child);
             block.comment.block = block;
+        } else if (child.tag === 'receiver') {
+            nop(); // ignore
         } else {
             this.loadInput(child, inputs[i], block);
         }
@@ -1018,13 +1030,9 @@ SnapSerializer.prototype.loadValue = function (model) {
         }
         el = model.childNamed('receiver');
         if (el) {
-            if (el.childNamed('ref')) {
+            el = el.childNamed('ref') || el.childNamed('sprite');
+            if (el) {
                 v.receiver = this.loadValue(el);
-            } else {
-                el = el.childNamed('sprite');
-                if (el) {
-                    v.receiver = this.loadValue(el);
-                }
             }
         }
         el = model.childNamed('inputs');
@@ -1365,6 +1373,7 @@ BlockMorph.prototype.toXML = BlockMorph.prototype.toScriptXML = function (
 ) {
     var position,
         xml,
+        scale = SyntaxElementMorph.prototype.scale,
         block = this;
 
     // determine my position
@@ -1378,8 +1387,8 @@ BlockMorph.prototype.toXML = BlockMorph.prototype.toScriptXML = function (
     if (savePosition) {
         xml = serializer.format(
             '<script x="@" y="@">',
-            position.x,
-            position.y
+            position.x / scale,
+            position.y / scale
         );
     } else {
         xml = '<script>';
@@ -1414,7 +1423,8 @@ ReporterBlockMorph.prototype.toScriptXML = function (
     serializer,
     savePosition
 ) {
-    var position;
+    var position,
+        scale = SyntaxElementMorph.prototype.scale;
 
     // determine my save-position
     if (this.parent) {
@@ -1426,8 +1436,8 @@ ReporterBlockMorph.prototype.toScriptXML = function (
     if (savePosition) {
         return serializer.format(
             '<script x="@" y="@">%</script>',
-            position.x,
-            position.y,
+            position.x / scale,
+            position.y / scale,
             this.toXML(serializer)
         );
     }
@@ -1438,12 +1448,17 @@ CustomCommandBlockMorph.prototype.toBlockXML = function (serializer) {
     var scope = this.definition.isGlobal ? undefined
         : this.definition.receiver.name;
     return serializer.format(
-        '<custom-block s="@"%>%%</custom-block>',
+        '<custom-block s="@"%>%%%</custom-block>',
         this.blockSpec,
         this.definition.isGlobal ?
                 '' : serializer.format(' scope="@"', scope),
         serializer.store(this.inputs()),
-        this.comment ? this.comment.toXML(serializer) : ''
+        this.comment ? this.comment.toXML(serializer) : '',
+        scope && !this.definition.receiver[serializer.idProperty] ?
+                '<receiver>' +
+                    serializer.store(this.definition.receiver) +
+                    '</receiver>'
+                        : ''
     );
 };
 
@@ -1604,12 +1619,13 @@ Context.prototype.toXML = function (serializer) {
 // Comments
 
 CommentMorph.prototype.toXML = function (serializer) {
-    var position;
+    var position,
+        scale = SyntaxElementMorph.prototype.scale;
 
     if (this.block) { // attached to a block
         return serializer.format(
             '<comment w="@" collapsed="@">%</comment>',
-            this.textWidth(),
+            this.textWidth() / scale,
             this.isCollapsed,
             serializer.escape(this.text())
         );
@@ -1623,9 +1639,9 @@ CommentMorph.prototype.toXML = function (serializer) {
     }
     return serializer.format(
         '<comment x="@" y="@" w="@" collapsed="@">%</comment>',
-        position.x,
-        position.y,
-        this.textWidth(),
+        position.x / scale,
+        position.y / scale,
+        this.textWidth() / scale,
         this.isCollapsed,
         serializer.escape(this.text())
     );

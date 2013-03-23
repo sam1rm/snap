@@ -10120,14 +10120,14 @@ WorldMorph.prototype.initEventListeners = function () {
     );
 
     window.onbeforeunload = function (evt) {
-        /* var e = evt || window.event,
+        var e = evt || window.event,
             msg = "Are you sure you want to leave?";
         // For IE and Firefox
         if (e) {
             e.returnValue = msg;
         }
         // For Safari / chrome
-        return msg; */
+        return msg;
     };
 };
 

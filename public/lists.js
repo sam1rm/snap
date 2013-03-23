@@ -61,7 +61,7 @@ PushButtonMorph, SyntaxElementMorph, Color, Point, WatcherMorph,
 StringMorph, SpriteMorph, ScrollFrameMorph, CellMorph, ArrowMorph,
 MenuMorph, snapEquals, Morph, isNil, localize*/
 
-modules.lists = '2013-February-18';
+modules.lists = '2013-March-12';
 
 var List;
 var ListWatcherMorph;

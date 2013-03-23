@@ -29,24 +29,22 @@
 
 /*global modules, IDE_Morph, SnapSerializer, hex_sha512, alert, nop*/
 
-modules.cloud = '2013-February-21';
+modules.cloud = '2013-March-22';
 
 // Global stuff
 
 var Cloud;
 
 var SnapCloud = new Cloud(
-    '192.168.2.108:8087/miocon/app/login?_app=SnapCloud',
-    '192.168.2.108:8087/miocon/app/login?_app=SnapCloudSignUp'
+    'https://snapcloud.miosoft.com/miocon/app/login?_app=SnapCloud'
 );
 
 // Cloud /////////////////////////////////////////////////////////////
 
-function Cloud(url, signUpURL) {
+function Cloud(url) {
     this.username = null;
     this.password = null; // hex_sha512 hashed
     this.url = url;
-    this.signUpURL = signUpURL;
     this.session = null;
     this.api = {};
 }
@@ -56,6 +54,10 @@ Cloud.prototype.clear = function () {
     this.password = null;
     this.session = null;
     this.api = {};
+};
+
+Cloud.prototype.hasProtocol = function () {
+    return this.url.toLowerCase().indexOf('http') === 0;
 };
 
 // Cloud: Snap! API
@@ -72,14 +74,15 @@ Cloud.prototype.signup = function (
     try {
         request.open(
             "GET",
-            'http://'
-                + this.signUpURL
+            (this.hasProtocol() ? '' : 'http://')
+                + this.url + 'SignUp'
                 + '&Username='
                 + encodeURIComponent(username)
                 + '&Email='
                 + email,
             true
         );
+        request.withCredentials = true;
         request.onreadystatechange = function () {
             if (request.readyState === 4) {
                 if (request.responseText) {
@@ -87,19 +90,19 @@ Cloud.prototype.signup = function (
                         errorCall.call(
                             this,
                             request.responseText,
-                            'Snap!Cloud'
+                            'Signup'
                         );
                     } else {
                         callBack.call(
                             null,
                             request.responseText,
-                            'Snap!Cloud'
+                            'Signup'
                         );
                     }
                 } else {
                     errorCall.call(
                         null,
-                        myself.signUpURL,
+                        myself.url + 'SignUp',
                         'could not connect to:'
                     );
                 }
@@ -121,9 +124,10 @@ Cloud.prototype.connect = function (
     try {
         request.open(
             "GET",
-            'http://' + this.url,
+            (this.hasProtocol() ? '' : 'http://') + this.url,
             true
         );
+        request.withCredentials = true;
         request.onreadystatechange = function () {
             if (request.readyState === 4) {
                 if (request.responseText) {
@@ -180,7 +184,7 @@ Cloud.prototype.rawLogin = function (
     var myself = this,
         pwHash = hex_sha512("miosoft%20miocon,"
             + this.session.split('=')[1] + ","
-            + encodeURIComponent(username) + ","
+            + encodeURIComponent(username.toLowerCase()) + ","
             + password // alreadey hex_sha512 hashed
             );
     this.callService(
@@ -193,7 +197,7 @@ Cloud.prototype.rawLogin = function (
             } else {
                 errorCall.call(
                     null,
-                    'Service catalog is not available',
+                    'Service catalog is not available,\nplease retry',
                     'Connection Error:'
                 );
             }
@@ -372,13 +376,21 @@ Cloud.prototype.callService = function (
         request.onreadystatechange = function () {
             if (request.readyState === 4) {
                 var responseList = [];
+                if (request.responseText &&
+                        request.responseText.indexOf('ERROR') === 0) {
+                    errorCall.call(
+                        this,
+                        request.responseText,
+                        'Service: ' + serviceName
+                    );
+                    return;
+                }
                 if (serviceName === 'login') {
                     myself.api = myself.parseAPI(request.responseText);
-                } else {
-                    responseList = myself.parseResponse(
-                        request.responseText
-                    );
                 }
+                responseList = myself.parseResponse(
+                    request.responseText
+                );
                 callBack.call(null, responseList, service.url);
             }
         };
