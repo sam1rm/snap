@@ -191,6 +191,7 @@ SpriteMorph.prototype.initBlocks = function () {
     SpriteMorph.prototype.blocks = {
 
         // Motion
+        
         forward: {
             type: 'command',
             category: 'motion',

@@ -10120,14 +10120,15 @@ WorldMorph.prototype.initEventListeners = function () {
     );
 
     window.onbeforeunload = function (evt) {
-        var e = evt || window.event,
-            msg = "Are you sure you want to leave?";
-        // For IE and Firefox
-        if (e) {
-            e.returnValue = msg;
-        }
-        // For Safari / chrome
-        return msg;
+        //MAKHANI Deleted the annoying alert.
+        // var e = evt || window.event,
+        //     msg = "Are you sure you want to leave?";
+        // // For IE and Firefox
+        // if (e) {
+        //     e.returnValue = msg;
+        // }
+        // // For Safari / chrome
+        // return msg;
     };
 };
 
